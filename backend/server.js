@@ -1,8 +1,12 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
+const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
@@ -15,8 +19,6 @@ const contactRoutes = require("./routes/contact");
 const resumeRoutes = require("./routes/resume");
 const socialLinksRoutes = require("./routes/socialLinks");
 const newsletterRoutes = require("./routes/newsletter");
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
 
 dotenv.config();
 const app = express();
@@ -82,12 +84,18 @@ if (!fs.existsSync(resumesDir)) {
   console.log('Created resumes directory');
 }
 
-// Set up session before routes
+// Connect to MongoDB
+connectDB();
+
+// Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URI,
+    ttl: 24 * 60 * 60 // 1 day
+  }),
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -109,6 +117,41 @@ app.get('/api/auth/check', (req, res) => {
   }
 });
 
+// Test routes for deployment verification
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Backend is working!' });
+});
+
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+
+    res.json({
+      status: 'success',
+      message: 'Health check passed',
+      timestamp: new Date(),
+      environment: process.env.NODE_ENV,
+      database: {
+        state: dbStatus[dbState],
+        host: mongoose.connection.host
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: error.message
+    });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes);
@@ -119,4 +162,17 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/resume", resumeRoutes);
 app.use("/api/social-links", socialLinksRoutes);
 app.use("/api/newsletter", newsletterRoutes);
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// For Vercel serverless deployment
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+// Export the Express API
+module.exports = app;

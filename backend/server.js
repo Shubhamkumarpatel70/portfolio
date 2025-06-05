@@ -24,9 +24,10 @@ const PORT = process.env.PORT || 5000;
 
 // CORS configuration
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'https://portfolio-frontend.vercel.app',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'https://portfolio-mern-shubhamkumarpatel70.vercel.app',
+  'https://portfolio-mern-git-main-shubhamkumarpatel70.vercel.app',
+  'https://portfolio-mern-eight.vercel.app'
 ];
 
 const corsOptions = {
@@ -45,6 +46,15 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Additional headers for CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

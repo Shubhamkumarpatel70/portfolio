@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 5000;
 // CORS configuration
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL || 'https://portfolio-frontend.onrender.com'
+    ? [process.env.FRONTEND_URL, 'https://*.onrender.com']
     : 'http://localhost:3000',
   credentials: true,
   optionsSuccessStatus: 200
